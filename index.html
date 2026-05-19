@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Унесенные в дурку - Ночной прием</title>
+    <style>
+        /* Минималистичный темный дизайн */
+        :root {
+            --bg-color: #000000;
+            --ui-bg: rgba(15, 15, 15, 0.85);
+            --ui-border: #333333;
+            --text-main: #e0e0e0;
+            --text-name: #8ab4f8;
+            --btn-bg: #1a1a24;
+            --btn-border: #4a4e69;
+            --btn-hover: #2a2a3d;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Кастомный скроллбар */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f0f0f;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        #background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.6;
+            z-index: 1;
+            transition: background-image 1s ease-in-out;
+        }
+
+        #sprite-container {
+            position: absolute;
+            bottom: 25vh;
+            left: 50%;
+            transform: translateX(-50%);
+            height: 75vh;
+            z-index: 2;
+            transition: opacity 0.5s ease;
+            opacity: 0;
+        }
+
+        #sprite {
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 0 20px rgba(0,0,0,0.8));
+        }
+
+        #ui-layer {
+            position: relative;
+            z-index: 3;
+            background: var(--ui-bg);
+            border-top: 1px solid var(--ui-border);
+            backdrop-filter: blur(12px);
+            padding: 30px 20px;
+            min-height: 25vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+        }
+
+        #dialogue-box {
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        #speaker-name {
+            font-weight: 600;
+            font-size: 1.3rem;
+            color: var(--text-name);
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+            min-height: 1.5rem;
+        }
+
+        #message-text {
+            font-size: 1.15rem;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            min-height: 3.2rem;
+        }
+
+        #choices-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 600px;
+        }
+
+        .choice-btn {
+            background: var(--btn-bg);
+            border: 1px solid var(--btn-border);
+            color: var(--text-main);
+            padding: 14px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.05rem;
+            text-align: left;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .choice-btn:hover {
+            background: var(--btn-hover);
+            border-color: var(--text-name);
+            transform: translateX(5px);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="background"></div>
+    <div id="sprite-container">
+        <!-- В src можно подставить прямую ссылку на фото с сайта: https://psihiatr-24.ru/.../kuznetsov.jpg -->
+        <img id="sprite" src="https://psihiatr-24.ru/netcat_template/psihiatr-24/vrach-kuznecov-aleksey.jpg" alt="Алексей Павлович">
+    </div>
+    
+    <div id="ui-layer">
+        <div id="dialogue-box">
+            <div id="speaker-name"></div>
+            <div id="message-text"></div>
+            <div id="choices-container"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Фоновые изображения (стоковые)
+    const bgLaptop = "url('https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?auto=format&fit=crop&q=80&w=1920')";
+    const bgClinic = "url('https://images.unsplash.com/photo-1551076805-e1869043e560?auto=format&fit=crop&q=80&w=1920')";
+
+    const story = {
+        1: {
+            speaker: "",
+            text: "Глубокая ночь. Свет монитора - единственный источник освещения в комнате. Вы бездумно кликаете по ссылкам, пытаясь найти причину своей тревоги.",
+            bg: bgLaptop,
+            sprite: false,
+            choices: [{ text: "Продолжить листать", next: 2 }]
+        },
+        2: {
+            speaker: "",
+            text: "Случайно или по воле алгоритмов, открывается страница клиники psihiatr-24.ru. Взгляд цепляется за профиль врача: Кузнецов Алексей Павлович.",
+            bg: bgLaptop,
+            sprite: false,
+            choices: [{ text: "Посмотреть профиль", next: 3 }]
+        },
+        3: {
+            speaker: "",
+            text: "Внезапно на сайте всплывает окно онлайн-консультации. Но это не стандартный бот. Камера включается, и на вас смотрит мужчина с проницательным взглядом.",
+            bg: bgClinic,
+            sprite: true,
+            choices: [{ text: "Замереть от неожиданности", next: 4 }]
+        },
+        4: {
+            speaker: "Алексей Павлович",
+            text: "Доброй ночи. Я Алексей Павлович. Вижу, вы уже долго изучаете раздел тревожных расстройств на нашем сайте. Вас что-то беспокоит?",
+            bg: bgClinic,
+            sprite: true,
+            choices: [
+                { text: "Да, я не могу уснуть уже которую ночь.", next: 5 },
+                { text: "Я случайно зашла на сайт.", next: 6 }
+            ]
+        },
+        5: {
+            speaker: "Алексей Павлович",
+            text: "Бессонница - частый спутник скрытого стресса. Позвольте мне задать пару вопросов. Это не займет много времени, обещаю.",
+            bg: bgClinic,
+            sprite: true,
+            choices: [{ text: "Хорошо, спрашивайте.", next: 7 }]
+        },
+        6: {
+            speaker: "Алексей Павлович",
+            text: "Случайности редко бывают действительно случайными. Наш разум часто ищет помощи неосознанно. Позвольте мне провести короткий опрос?",
+            bg: bgClinic,
+            sprite: true,
+            choices: [{ text: "Только если короткий.", next: 7 }]
+        },
+        7: {
+            speaker: "Алексей Павлович",
+            text: "Скажите, возникает ли у вас чувство, будто вы несете на плечах невидимый, но очень тяжелый груз, который никто вокруг не замечает?",
+            bg: bgClinic,
+            sprite: true,
+            choices: [
+                { text: "Именно так я себя и чувствую.", next: 8 },
+                { text: "Иногда бывает, как и у всех.", next: 8 }
+            ]
+        },
+        8: {
+            speaker: "Алексей Павлович",
+            text: "Его голос становится бархатнее, а взгляд с экрана - более теплым и личным. Он делает пометки в блокноте, едва заметно улыбаясь.",
+            bg: bgClinic,
+            sprite: true,
+            choices: [{ text: "Ждать его вердикта", next: 9 }]
+        },
+        9: {
+            speaker: "Алексей Павлович",
+            text: "Ваша нервная система истощена. Онлайн-консультации здесь не помогут. Вам нужно место, где вы сможете полностью отключиться от внешнего мира.",
+            bg: bgClinic,
+            sprite: true,
+            choices: [{ text: "Вы предлагаете таблетки?", next: 10 }]
+        },
+        10: {
+            speaker: "Алексей Павлович",
+            text: "Я предлагаю кое-что получше. Знаете, в моем отделении стационара сейчас так тихо. Мягкий свет, никакой суеты, идеальный уход.",
+            bg: bgClinic,
+            sprite: true,
+            choices: [{ text: "Слушать дальше...", next: 11 }]
+        },
+        11: {
+            speaker: "Алексей Павлович",
+            text: "Может, вам стоит лечь к нам? Под мое личное круглосуточное наблюдение. Мы будем много разговаривать. Я позабочусь о том, чтобы вам было очень комфортно.",
+            bg: bgClinic,
+            sprite: true,
+            choices: [
+                { text: "Согласиться на госпитализацию", next: 12 },
+                { text: "Смущенно улыбнуться и отказаться", next: 13 }
+            ]
+        },
+        12: {
+            speaker: "Алексей Павлович",
+            text: "Прекрасное решение. Я уже оформляю вашу палату. Жду вас утром. Обещаю, это будет лучший отдых в вашей жизни.",
+            bg: bgClinic,
+            sprite: true,
+            choices: [{ text: "Конец.", next: 1 }]
+        },
+        13: {
+            speaker: "Алексей Павлович",
+            text: "Вы упрямы, и это очаровательно. Но я умею ждать. Мои двери - и двери моей клиники - всегда открыты для вас. Спокойной ночи.",
+            bg: bgClinic,
+            sprite: true,
+            choices: [{ text: "Конец.", next: 1 }]
+        }
+    };
+
+    let currentNode = 1;
+    const bgElement = document.getElementById('background');
+    const spriteContainer = document.getElementById('sprite-container');
+    const speakerElement = document.getElementById('speaker-name');
+    const textElement = document.getElementById('message-text');
+    const choicesContainer = document.getElementById('choices-container');
+
+    function renderNode(nodeId) {
+        const node = story[nodeId];
+        
+        // Обновление фона
+        if (bgElement.style.backgroundImage !== node.bg) {
+            bgElement.style.backgroundImage = node.bg;
+        }
+
+        // Обновление спрайта
+        if (node.sprite) {
+            spriteContainer.style.opacity = 1;
+        } else {
+            spriteContainer.style.opacity = 0;
+        }
+
+        // Обновление текста
+        speakerElement.textContent = node.speaker;
+        
+        // Анимация текста и кнопок
+        textElement.classList.remove('fade-in');
+        choicesContainer.innerHTML = '';
+        
+        void textElement.offsetWidth; // Триггер рефлоу для перезапуска анимации
+        textElement.textContent = node.text;
+        textElement.classList.add('fade-in');
+
+        // Создание кнопок выбора
+        node.choices.forEach((choice, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'choice-btn';
+            btn.textContent = choice.text;
+            btn.style.animation = `fadeIn 0.5s ease forwards ${index * 0.1}s`;
+            btn.style.opacity = '0';
+            btn.onclick = () => {
+                currentNode = choice.next;
+                renderNode(currentNode);
+            };
+            choicesContainer.appendChild(btn);
+        });
+    }
+
+    // Запуск новеллы
+    window.onload = () => {
+        renderNode(currentNode);
+    };
+</script>
+
+</body>
+</html>
